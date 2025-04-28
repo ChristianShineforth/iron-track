@@ -31,8 +31,24 @@ export default async function splitRoutes(fastify, opts) {
     }
   }, async (req, reply) => {
     const { userId, name, muscleGroups, exercises } = req.body;
-    const split = await WorkoutSplit.create({ userId: new mongoose.Types.ObjectId(userId), name, muscleGroups, exercises });
-    reply.send(split);
+    let split = await WorkoutSplit.findOne({ userId: new mongoose.Types.ObjectId(userId), name });
+
+    if (split) {
+      split = await WorkoutSplit.findOneAndUpdate(
+        { userId: new mongoose.Types.ObjectId(userId), name },
+        {
+          $addToSet: {
+            muscleGroups: { $each: muscleGroups ?? [] }, // avoids duplicates, appends new ones
+            exercises: { $each: exercises ?? [] }
+          }
+        },
+        { new: true }
+      );
+      reply.send(split);
+    } else {
+      split = await WorkoutSplit.create({ userId: new mongoose.Types.ObjectId(userId), name, muscleGroups, exercises });
+      reply.send(split);
+    }
   });
 
   fastify.get('/:userId', {
@@ -48,5 +64,18 @@ export default async function splitRoutes(fastify, opts) {
   }, async (req, reply) => {
     const splits = await WorkoutSplit.find({ userId: req.params.userId });
     reply.send(splits);
+  });
+
+  fastify.delete('/:id', async (req, reply) => {
+    const { id } = req.params;
+    try {
+      const deleted = await WorkoutSplit.findByIdAndDelete(id);
+      if (!deleted) {
+        return reply.code(404).send({ error: "Split not found" });
+      }
+      reply.send({ success: true });
+    } catch (err) {
+      reply.code(500).send({ error: err.message });
+    }
   });
 }
