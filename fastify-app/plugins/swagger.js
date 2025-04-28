@@ -12,7 +12,7 @@ module.exports = fp(async function (fastify, opts) {
         version: '1.0.0',
       },
       servers: [
-        { url: 'http://localhost:3000' }
+        { url: 'http://localhost:4000' }
       ],
     }
   })
